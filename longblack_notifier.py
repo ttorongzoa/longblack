@@ -7,31 +7,45 @@ from playwright.sync_api import sync_playwright
 def get_longblack_url():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
-        # 롱블랙 메인 접속
-        page.goto("https://www.longblack.co", timeout=60000)
+        # 실제 브라우저처럼 보이도록 User-Agent 설정
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        )
+        page = context.new_page()
         
-        # 노트 링크 요소가 뜰 때까지 대기
-        page.wait_for_selector("a[href*='/note/']")
-        
-        # 오늘 올라온 무료 노트 링크 추출
-        note_element = page.query_selector("a[href*='/note/']")
-        if note_element:
-            href = note_element.get_attribute("href")
-            title = note_element.inner_text().strip().split('\n')[0]
-            link = f"https://www.longblack.co{href}" if href.startswith('/') else href
-        else:
-            title = "오늘의 롱블랙 노트"
+        try:
+            page.goto("https://www.longblack.co", timeout=60000, wait_until="networkidle")
+            
+            # /note/ 경로가 들어간 첫 번째 텍스트 링크 탐색
+            note_element = page.locator("a[href*='/note/']").first
+            
+            if note_element.count() > 0:
+                href = note_element.get_attribute("href")
+                title = note_element.inner_text().strip().split('\n')[0]
+                if not title:
+                    title = "오늘의 롱블랙 노트"
+                link = f"https://www.longblack.co{href}" if href.startswith('/') else href
+            else:
+                title = "오늘의 롱블랙 노트 (직접 확인)"
+                link = "https://www.longblack.co"
+        except Exception as e:
+            print(f"페이지 로딩 중 오류 발생: {e}")
+            title = "오늘의 롱블랙 노트 (접속 불가)"
             link = "https://www.longblack.co"
             
         browser.close()
         return title, link
 
 def send_email(title, link):
-    # Step 2에서 설정한 Secrets에서 안전하게 가져오기
     sender_email = os.environ.get("MY_GMAIL")
     app_password = os.environ.get("MY_GMAIL_APP_PASSWORD")
     receiver_email = os.environ.get("RECEIVER_GMAIL")
+
+    if not sender_email or not app_password or not receiver_email:
+        raise ValueError("Secrets 값이 설정되지 않았습니다. Settings -> Secrets를 확인해주세요.")
+
+    # 앱 비밀번호 공백 제거
+    app_password = app_password.replace(" ", "")
 
     msg = MIMEMultipart()
     msg['From'] = sender_email
@@ -56,5 +70,6 @@ def send_email(title, link):
 
 if __name__ == "__main__":
     title, link = get_longblack_url()
+    print(f"추출 성공 - 제목: {title}, 링크: {link}")
     send_email(title, link)
     print("성공적으로 이메일을 발송했습니다!")
