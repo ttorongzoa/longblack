@@ -1,0 +1,32 @@
+name: Send Longblack Daily Link
+
+on:
+  schedule:
+    # UTC 23:00 = 한국 시간(KST) 매일 아침 08:00 실행
+    - cron: '0 23 * * *'
+  workflow_dispatch: # 수동 테스트 버튼 활성화
+
+jobs:
+  run-crawler:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright
+          playwright install --with-deps chromium
+
+      - name: Run Script
+        env:
+          MY_GMAIL: ${{ secrets.MY_GMAIL }}
+          MY_GMAIL_APP_PASSWORD: ${{ secrets.MY_GMAIL_APP_PASSWORD }}
+          RECEIVER_GMAIL: ${{ secrets.RECEIVER_GMAIL }}
+        run: python longblack_notifier.py
