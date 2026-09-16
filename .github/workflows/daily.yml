@@ -2,19 +2,18 @@ name: Send Longblack Daily Link
 
 on:
   schedule:
-    # UTC 23:00 = 한국 시간(KST) 매일 아침 08:00 실행
     - cron: '0 23 * * *'
-  workflow_dispatch: # 수동 테스트 버튼 활성화
+  workflow_dispatch:
 
 jobs:
   run-crawler:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
